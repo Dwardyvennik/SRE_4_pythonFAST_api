@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FastAPI Microservices Shop</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel auth-panel">
+        <h1>Microservices Shop</h1>
+        <p id="status">Not logged in</p>
+
+        <div class="tabs">
+          <button id="login-tab" class="active" type="button">Login</button>
+          <button id="register-tab" type="button">Register</button>
+        </div>
+
+        <form id="auth-form">
+          <label>
+            Username
+            <input id="username" autocomplete="username" required>
+          </label>
+          <label id="email-field" class="hidden">
+            Email
+            <input id="email" type="email" autocomplete="email">
+          </label>
+          <label id="name-field" class="hidden">
+            Full name
+            <input id="full-name" autocomplete="name">
+          </label>
+          <label>
+            Password
+            <input id="password" type="password" autocomplete="current-password" required>
+          </label>
+          <button id="auth-submit" type="submit">Login</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <h2>Products</h2>
+          <button id="refresh-products" type="button">Refresh</button>
+        </div>
+        <div id="products" class="product-grid"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Create Order</h2>
+        <form id="order-form" class="order-form">
+          <label>
+            Product
+            <select id="product-select" required></select>
+          </label>
+          <label>
+            Quantity
+            <input id="quantity" type="number" min="1" value="1" required>
+          </label>
+          <button type="submit">Create order</button>
+        </form>
+        <pre id="order-result"></pre>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

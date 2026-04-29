@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Microservices Assignment</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 28px;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #d8dee9;
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    a {
+      color: #0f766e;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    code {
+      background: #eef2f7;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Microservices Assignment</h1>
+    <p>FastAPI services behind Nginx, with PostgreSQL, Prometheus, and Grafana.</p>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Auth</h2>
+        <p><a href="/auth/">/auth/</a></p>
+        <code>POST /auth/login</code>
+      </div>
+      <div class="card">
+        <h2>Users</h2>
+        <p><a href="/users/1">/users/1</a></p>
+        <code>POST /users/?name=...&email=...</code>
+      </div>
+      <div class="card">
+        <h2>Products</h2>
+        <p><a href="/products/">/products/</a></p>
+        <code>GET /products/1</code>
+      </div>
+      <div class="card">
+        <h2>Orders</h2>
+        <p><a href="/orders/">/orders/</a></p>
+        <code>POST /orders/place-order</code>
+      </div>
+      <div class="card">
+        <h2>Chat</h2>
+        <p><a href="/chat/">/chat/</a></p>
+        <code>POST /chat/send-message</code>
+      </div>
+      <div class="card">
+        <h2>Monitoring</h2>
+        <p><a href="http://localhost:9090">Prometheus</a></p>
+        <p><a href="http://localhost:3000">Grafana</a></p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

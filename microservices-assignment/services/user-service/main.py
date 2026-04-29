@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Request
-import time
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import PlainTextResponse
 import random
 
-app = FastAPI()
+app = FastAPI(title="User Service")
 
 # In-memory storage simulation
 users_db = {
@@ -18,7 +18,7 @@ def read_root():
 async def get_user(user_id: int):
     if user_id in users_db:
         return users_db[user_id]
-    return {"message": "User not found"}, 404
+    raise HTTPException(status_code=404, detail="User not found")
 
 @app.post("/users/")
 async def create_user(name: str, email: str):
@@ -29,5 +29,5 @@ async def create_user(name: str, email: str):
 
 @app.get("/metrics")
 def metrics():
-    metric = f'user_service_requests_total{{"endpoint":"/users/{random.randint(1, 2)}"}} 1\n'
-    return {"text/plain": metric}
+    metric = f'user_service_requests_total{{endpoint="/users/{random.randint(1, 2)}"}} 1\n'
+    return PlainTextResponse(metric, media_type="text/plain")

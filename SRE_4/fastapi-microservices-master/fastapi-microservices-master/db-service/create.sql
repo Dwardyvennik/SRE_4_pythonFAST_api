@@ -1,1 +1,2 @@
-CREATE DATABASE app_db_dev;
+-- The postgres image creates POSTGRES_DB automatically.
+-- Service tables are created by each FastAPI service on startup.

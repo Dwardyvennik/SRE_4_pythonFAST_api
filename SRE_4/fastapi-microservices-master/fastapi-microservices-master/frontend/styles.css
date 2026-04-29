@@ -1,0 +1,149 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: #18212f;
+  background: #f6f8fb;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 32px auto;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #dce2ea;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.auth-panel {
+  grid-row: span 2;
+  align-self: start;
+}
+
+h1,
+h2 {
+  margin: 0 0 12px;
+}
+
+p {
+  margin: 0 0 18px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+input,
+select,
+button {
+  min-height: 40px;
+  border-radius: 6px;
+  font: inherit;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #c8d1dc;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+button {
+  border: 0;
+  padding: 0 14px;
+  background: #1663d8;
+  color: #fff;
+  cursor: pointer;
+}
+
+button.secondary,
+.tabs button {
+  background: #e8edf4;
+  color: #18212f;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tabs button.active {
+  background: #1663d8;
+  color: #fff;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.product {
+  border: 1px solid #dce2ea;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.product h3 {
+  margin: 0 0 8px;
+}
+
+.product p {
+  margin: 0 0 10px;
+  color: #526073;
+}
+
+.price {
+  font-weight: 700;
+}
+
+.order-form {
+  display: grid;
+  grid-template-columns: 1fr 140px auto;
+  gap: 12px;
+  align-items: end;
+}
+
+pre {
+  min-height: 48px;
+  margin: 16px 0 0;
+  white-space: pre-wrap;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .shell,
+  .order-form {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-panel {
+    grid-row: auto;
+  }
+}
