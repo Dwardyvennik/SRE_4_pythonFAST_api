@@ -65,8 +65,8 @@ docker compose up --build
 Open:
 
 - Frontend: `http://localhost:8080`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000` with username `admin` and password `admin`
+- Prometheus: `http://localhost:9091`
+- Grafana: `http://localhost:52057` with username `admin` and password `admin`
 - Auth docs: `http://localhost:8080/api/auth/docs`
 - User docs: `http://localhost:8080/api/users/docs`
 - Product docs: `http://localhost:8080/api/products/docs`
@@ -84,6 +84,7 @@ Open:
 ## Monitoring
 
 Every FastAPI service uses `prometheus-fastapi-instrumentator` and exposes metrics at `/metrics`.
+Each service also has a small FastAPI middleware that records application-level metrics with `method`, `endpoint`, `status`, and `service_name` labels.
 
 Code snippet added to every `app/main.py`:
 
@@ -91,7 +92,15 @@ Code snippet added to every `app/main.py`:
 from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI(...)
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+Instrumentator().expose(app, endpoint="/metrics", include_in_schema=False)
+```
+
+Application metrics emitted by each service:
+
+```text
+http_requests_total{method="GET",endpoint="/products",status="200",service_name="product-service"}
+http_request_duration_seconds_bucket{method="GET",endpoint="/products",status="200",service_name="product-service",le="0.5"}
+http_requests_in_progress{method="GET",endpoint="/products",service_name="product-service"}
 ```
 
 Prometheus scrape targets are defined in `prometheus/prometheus.yml`:
@@ -122,7 +131,7 @@ scrape_configs:
 
 ## Grafana Dashboard
 
-1. Open `http://localhost:3000`.
+1. Open `http://localhost:52057`.
 2. Login with `admin` / `admin`.
 3. Add Prometheus data source with URL `http://prometheus:9090`.
 4. Create a dashboard and add panels with these PromQL queries.
@@ -136,13 +145,13 @@ up
 Request Rate:
 
 ```promql
-sum(rate(http_requests_total[1m])) by (job)
+sum(rate(http_requests_total[1m])) by (service_name)
 ```
 
 5xx Error Rate:
 
 ```promql
-sum(rate(http_requests_total{status=~"5.."}[1m])) by (job)
+sum(rate(http_requests_total{status=~"5.."}[1m])) by (service_name)
 ```
 
 Average Latency:
@@ -158,7 +167,7 @@ p95 Latency:
 ```promql
 histogram_quantile(
   0.95,
-  sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job)
+  sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service_name)
 )
 ```
 
@@ -199,13 +208,13 @@ docker compose -f docker-compose.yml -f docker-compose.incident.yml up -d --forc
 Generate traffic and check Prometheus:
 
 ```bash
-curl "http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22order-service%22%7D"
+curl "http://localhost:9091/api/v1/query?query=up%7Bjob%3D%22order-service%22%7D"
 ```
 
 Check Prometheus targets:
 
 ```text
-http://localhost:9090/targets
+http://localhost:9091/targets
 ```
 
 Expected result:
@@ -224,7 +233,7 @@ Verify recovery:
 
 ```bash
 docker compose ps order-service
-curl http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22order-service%22%7D
+curl http://localhost:9091/api/v1/query?query=up%7Bjob%3D%22order-service%22%7D
 ```
 
 Expected recovery:

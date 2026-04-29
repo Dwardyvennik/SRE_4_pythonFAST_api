@@ -1,8 +1,10 @@
 import os
+import time
 from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, DateTime, Integer, Numeric, String, create_engine
@@ -10,10 +12,26 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5432/microservices_db")
+SERVICE_NAME = "product-service"
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
+HTTP_REQUESTS_TOTAL = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status", "service_name"],
+)
+HTTP_REQUEST_DURATION_SECONDS = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint", "status", "service_name"],
+)
+HTTP_REQUESTS_IN_PROGRESS = Gauge(
+    "http_requests_in_progress",
+    "HTTP requests currently in progress",
+    ["method", "endpoint", "service_name"],
+)
 
 
 class Product(Base):
@@ -45,7 +63,6 @@ def get_db():
     finally:
         db.close()
 
-
 def product_response(product: Product) -> ProductResponse:
     return ProductResponse(
         id=product.id,
@@ -54,7 +71,6 @@ def product_response(product: Product) -> ProductResponse:
         price=product.price,
         stock=product.stock,
     )
-
 
 def seed_products(db: Session):
     if db.query(Product).count() > 0:
@@ -70,7 +86,39 @@ def seed_products(db: Session):
 
 
 app = FastAPI(title="Product Service", openapi_url="/products/openapi.json", docs_url="/products/docs")
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+Instrumentator().expose(app, endpoint="/metrics", include_in_schema=False)
+
+
+@app.middleware("http")
+async def metrics_middleware(request, call_next):
+    endpoint = request.url.path
+    if endpoint == "/metrics":
+        return await call_next(request)
+
+    method = request.method
+    status_code = "500"
+    start_time = time.perf_counter()
+    in_progress = HTTP_REQUESTS_IN_PROGRESS.labels(method=method, endpoint=endpoint, service_name=SERVICE_NAME)
+    in_progress.inc()
+    try:
+        response = await call_next(request)
+        status_code = str(response.status_code)
+        return response
+    finally:
+        duration = time.perf_counter() - start_time
+        HTTP_REQUESTS_TOTAL.labels(
+            method=method,
+            endpoint=endpoint,
+            status=status_code,
+            service_name=SERVICE_NAME,
+        ).inc()
+        HTTP_REQUEST_DURATION_SECONDS.labels(
+            method=method,
+            endpoint=endpoint,
+            status=status_code,
+            service_name=SERVICE_NAME,
+        ).observe(duration)
+        in_progress.dec()
 
 
 @app.on_event("startup")
