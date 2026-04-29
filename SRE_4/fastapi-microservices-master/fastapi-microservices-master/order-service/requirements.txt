@@ -4,3 +4,4 @@ SQLAlchemy==2.0.31
 psycopg2-binary==2.9.9
 python-jose[cryptography]==3.3.0
 requests==2.32.3
+prometheus-fastapi-instrumentator

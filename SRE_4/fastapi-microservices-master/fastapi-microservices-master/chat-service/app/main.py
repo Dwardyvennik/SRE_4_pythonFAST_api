@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, DateTime, Integer, String, create_engine, or_
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -69,6 +70,7 @@ def message_response(message: Message) -> MessageResponse:
 
 
 app = FastAPI(title="Chat Service", openapi_url="/chat/openapi.json", docs_url="/chat/docs")
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 @app.on_event("startup")

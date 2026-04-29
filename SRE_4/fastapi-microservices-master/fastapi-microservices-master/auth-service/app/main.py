@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.exc import IntegrityError
@@ -102,6 +103,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 @app.on_event("startup")

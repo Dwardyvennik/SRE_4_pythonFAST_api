@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -68,6 +69,7 @@ def profile_response(profile: UserProfile) -> ProfileResponse:
 
 
 app = FastAPI(title="User Service", openapi_url="/users/openapi.json", docs_url="/users/docs")
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 @app.on_event("startup")

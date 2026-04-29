@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, DateTime, Integer, Numeric, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -69,6 +70,7 @@ def seed_products(db: Session):
 
 
 app = FastAPI(title="Product Service", openapi_url="/products/openapi.json", docs_url="/products/docs")
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 @app.on_event("startup")
