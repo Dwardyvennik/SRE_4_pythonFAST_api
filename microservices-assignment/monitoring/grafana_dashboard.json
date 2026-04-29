@@ -1,5 +1,0 @@
-{
-  "title": "Microservices Assignment Dashboard",
-  "description": "Placeholder dashboard for FastAPI service metrics scraped by Prometheus.",
-  "panels": []
-}

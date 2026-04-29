@@ -1,5 +1,0 @@
-fastapi
-uvicorn[standard]
-starlette
-psycopg2-binary
-python-dotenv
