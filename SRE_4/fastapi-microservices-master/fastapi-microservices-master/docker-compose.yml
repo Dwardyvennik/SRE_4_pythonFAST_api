@@ -1,17 +1,18 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped      
     environment:
-      POSTGRES_DB: microservices_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-microservices_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db-service/create.sql:/docker-entrypoint-initdb.d/create.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d microservices_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-microservices_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -20,83 +21,120 @@ services:
 
   auth-service:
     build: ./auth-service
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db
-      JWT_SECRET: change-me-in-production
-      JWT_ALGORITHM: HS256
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      TOKEN_EXPIRE_MINUTES: ${TOKEN_EXPIRE_MINUTES:-120}
     depends_on:
       postgres:
         condition: service_healthy
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - microservices-net
 
   user-service:
     build: ./user-service
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db
-      JWT_SECRET: change-me-in-production
-      JWT_ALGORITHM: HS256
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
     depends_on:
       postgres:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - microservices-net
 
   product-service:
     build: ./product-service
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
     depends_on:
       postgres:
         condition: service_healthy
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - microservices-net
 
   order-service:
     build: ./order-service
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db
-      JWT_SECRET: change-me-in-production
-      JWT_ALGORITHM: HS256
-      PRODUCT_SERVICE_URL: http://product-service:8000
+      DATABASE_URL: ${ORDER_DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL:-http://product-service:8000}
     depends_on:
       postgres:
         condition: service_healthy
       product-service:
-        condition: service_started
+        condition: service_healthy
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - microservices-net
 
   chat-service:
     build: ./chat-service
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db
-      JWT_SECRET: change-me-in-production
-      JWT_ALGORITHM: HS256
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
     depends_on:
       postgres:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - microservices-net
 
   nginx:
     image: nginx:1.27-alpine
+    restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${HTTP_PORT:-8080}:80"
     volumes:
       - ./nginx:/etc/nginx/conf.d:ro
       - ./frontend:/usr/share/nginx/html:ro
@@ -111,8 +149,9 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.54.1
+    restart: unless-stopped
     ports:
-      - "9091:9090"
+      - "${PROMETHEUS_PORT:-9091}:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command:
@@ -128,13 +167,15 @@ services:
 
   grafana:
     image: grafana/grafana:11.2.0
+    restart: unless-stopped
     ports:
-      - "52057:3000"
+      - "${GRAFANA_PORT:-52057}:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
     networks:
