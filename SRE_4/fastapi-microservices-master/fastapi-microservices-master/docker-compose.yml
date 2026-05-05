@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    restart: unless-stopped      
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-microservices_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -154,6 +154,7 @@ services:
       - "${PROMETHEUS_PORT:-9091}:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     depends_on:

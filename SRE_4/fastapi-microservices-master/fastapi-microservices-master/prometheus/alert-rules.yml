@@ -1,0 +1,29 @@
+groups:
+  - name: microservices-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"auth-service|user-service|product-service|order-service|chat-service"} == 0
+        for: 1.5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "Prometheus has been unable to scrape {{ $labels.job }} for more than 1 minute."
+
+      - alert: HighServiceCpuUsage
+        expr: rate(process_cpu_seconds_total{job=~"auth-service|user-service|product-service|order-service|chat-service"}[2m]) > 0.8
+        for: 1.5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} has high CPU usage"
+          description: "{{ $labels.job }} is consuming more than 80% of one CPU core for more than 2 minutes."
+
+      - alert: IncreasedErrorRate
+        expr: sum by (job, service_name) (rate(http_requests_total{job=~"auth-service|user-service|product-service|order-service|chat-service",status=~"5.."}[2m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} has increased 5xx errors"
+          description: "{{ $labels.job }} is returning more than 0.05 server errors per second for more than 2 minutes."
