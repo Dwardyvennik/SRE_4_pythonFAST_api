@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db-service/create.sql:/docker-entrypoint-initdb.d/create.sql:ro
@@ -33,7 +33,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/auth/health', timeout=3)\""]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -56,7 +56,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/users/health', timeout=3)\""]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -75,7 +75,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/products/health', timeout=3)\""]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -99,7 +99,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/orders/health', timeout=3)\""]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -122,7 +122,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/chat/health', timeout=3)\""]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -163,9 +163,25 @@ services:
       - product-service
       - order-service
       - chat-service
+      - cadvisor
     networks:
       - microservices-net
 
+  #that exposes container-level CPU, memory, and lifecycle metrics for capacity planning.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    privileged: true
+    ports:
+    - "8081:8080"
+    volumes:
+    - /:/rootfs:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - /sys:/sys:ro
+    - /var/run:/var/run:ro
+    restart: unless-stopped
+    networks:
+    - microservices-net
   grafana:
     image: grafana/grafana:11.2.0
     restart: unless-stopped
