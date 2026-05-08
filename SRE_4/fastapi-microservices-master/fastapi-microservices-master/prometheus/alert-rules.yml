@@ -3,7 +3,7 @@ groups:
     rules:
       - alert: ServiceDown
         expr: up{job=~"auth-service|user-service|product-service|order-service|chat-service"} == 0
-        for: 1.5m
+        for: 2m
         labels:
           severity: critical
         annotations:
@@ -12,12 +12,21 @@ groups:
 
       - alert: HighServiceCpuUsage
         expr: rate(process_cpu_seconds_total{job=~"auth-service|user-service|product-service|order-service|chat-service"}[2m]) > 0.8
-        for: 1.5m
+        for: 2m
         labels:
           severity: warning
         annotations:
           summary: "{{ $labels.job }} has high CPU usage"
           description: "{{ $labels.job }} is consuming more than 80% of one CPU core for more than 2 minutes."
+
+      - alert: HighContainerCpuUsage
+        expr: sum by (name) (rate(container_cpu_usage_seconds_total{name!=""}[2m])) > 0.8
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} has high CPU usage"
+          description: "cAdvisor reports that {{ $labels.name }} is using more than 80% of one CPU core."
 
       - alert: IncreasedErrorRate
         expr: sum by (job, service_name) (rate(http_requests_total{job=~"auth-service|user-service|product-service|order-service|chat-service",status=~"5.."}[2m])) > 0.05
@@ -27,3 +36,30 @@ groups:
         annotations:
           summary: "{{ $labels.job }} has increased 5xx errors"
           description: "{{ $labels.job }} is returning more than 0.05 server errors per second for more than 2 minutes."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, sum by (le, job, service_name) (rate(http_request_duration_seconds_bucket{job=~"auth-service|user-service|product-service|order-service|chat-service"}[5m]))) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} has high p95 latency"
+          description: "{{ $labels.job }} p95 response latency is above 1 second."
+
+      - alert: ContainerRestarted
+        expr: changes(container_start_time_seconds{name!=""}[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} restarted"
+          description: "cAdvisor observed a restart for {{ $labels.name }} in the last 10 minutes."
+
+      - alert: CadvisorUnavailable
+        expr: up{job="cadvisor"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "cAdvisor is unavailable"
+          description: "Prometheus cannot scrape cAdvisor container metrics."

@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db-service/create.sql:/docker-entrypoint-initdb.d/create.sql:ro
@@ -170,7 +170,6 @@ services:
   #that exposes container-level CPU, memory, and lifecycle metrics for capacity planning.
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
     privileged: true
     ports:
     - "8081:8080"

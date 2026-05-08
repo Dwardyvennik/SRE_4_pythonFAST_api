@@ -160,6 +160,8 @@ async def metrics_middleware(request, call_next):
         in_progress.dec()
 
 
+@app.get("/health", include_in_schema=False)
+@app.get("/orders/health")
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)

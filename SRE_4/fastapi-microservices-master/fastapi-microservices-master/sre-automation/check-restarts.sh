@@ -3,11 +3,15 @@ set -u
 
 SERVICES=(
   "auth-service"
+  "user-service"
   "product-service"
   "order-service"
+  "chat-service"
   "postgres"
+  "nginx"
   "prometheus"
   "grafana"
+  "cadvisor"
 )
 
 timestamp="$(date '+%Y-%m-%d %H:%M:%S %Z')"

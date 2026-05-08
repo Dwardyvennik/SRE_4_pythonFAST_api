@@ -128,6 +128,7 @@ def startup():
     Base.metadata.create_all(bind=engine)
 
 
+@app.get("/health", include_in_schema=False)
 @app.get("/chat/health")
 def health():
     return {"status": "ok", "service": "chat-service"}

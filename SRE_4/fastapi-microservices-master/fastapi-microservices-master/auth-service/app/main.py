@@ -160,7 +160,8 @@ async def metrics_middleware(request, call_next):
 def startup():
     Base.metadata.create_all(bind=engine)
 
-
+# health check endpoints - one for root and one for /auth/health to match the pattern of other endpoints
+@app.get("/health", include_in_schema=False)
 @app.get("/auth/health")
 def health():
     return {"status": "ok", "service": "auth-service"}

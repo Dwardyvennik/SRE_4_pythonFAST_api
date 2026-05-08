@@ -121,7 +121,8 @@ async def metrics_middleware(request, call_next):
         ).observe(duration)
         in_progress.dec()
 
-
+@app.get("/health", include_in_schema=False)
+@app.get("/users/health")
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
