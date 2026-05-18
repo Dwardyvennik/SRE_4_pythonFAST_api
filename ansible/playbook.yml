@@ -1,0 +1,42 @@
+---
+# ==============================================================================
+# SRE End-Term Project — Main Playbook
+# ==============================================================================
+# Runs all roles in order:
+#   1. docker      — install Docker Engine + Compose plugin
+#   2. deploy      — clone repo, build images, start Compose stack
+#   3. swarm       — initialise Docker Swarm and deploy stack
+#   4. kubernetes  — install kubectl + apply all K8s manifests
+#   5. monitoring  — wait for and verify Prometheus / Grafana / UI
+#
+# Usage:
+#   ansible-playbook playbook.yml                  # full run
+#   ansible-playbook playbook.yml --tags docker    # only Docker install
+#   ansible-playbook playbook.yml --tags deploy    # only app deploy
+#   ansible-playbook playbook.yml --tags swarm     # only Swarm
+#   ansible-playbook playbook.yml --tags k8s       # only Kubernetes
+#   ansible-playbook playbook.yml --tags monitoring # only health checks
+# ==============================================================================
+
+- name: SRE — Full stack provisioning and deployment
+  hosts: sre_hosts
+  become: true
+
+  vars_files:
+    - group_vars/all.yml
+
+  roles:
+    - role: docker
+      tags: [docker]
+
+    - role: deploy
+      tags: [deploy]
+
+    - role: swarm
+      tags: [swarm]
+
+    - role: kubernetes
+      tags: [k8s]
+
+    - role: monitoring
+      tags: [monitoring]

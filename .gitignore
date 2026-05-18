@@ -4,3 +4,13 @@
 
 __pycache__/
 *.py[cod]
+
+# Terraform local state/cache
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json

@@ -1,0 +1,100 @@
+---
+# ==============================================================================
+# Role: monitoring
+# Verifies the observability stack (Prometheus, Grafana, cAdvisor) is healthy
+# and prints all relevant URLs for the user.
+# ==============================================================================
+
+- name: "[monitoring] Wait for Prometheus to be healthy"
+  ansible.builtin.uri:
+    url: "http://localhost:{{ prometheus_port }}/-/healthy"
+    status_code: 200
+  register: prometheus_health
+  retries: "{{ health_retries }}"
+  delay: "{{ health_delay }}"
+  until: prometheus_health.status == 200
+
+- name: "[monitoring] Prometheus is UP"
+  ansible.builtin.debug:
+    msg: "✅ Prometheus healthy at http://localhost:{{ prometheus_port }}"
+
+- name: "[monitoring] Wait for Grafana login page"
+  ansible.builtin.uri:
+    url: "http://localhost:{{ grafana_port }}/login"
+    status_code: 200
+  register: grafana_health
+  retries: "{{ health_retries }}"
+  delay: "{{ health_delay }}"
+  until: grafana_health.status == 200
+
+- name: "[monitoring] Grafana is UP"
+  ansible.builtin.debug:
+    msg: "✅ Grafana healthy at http://localhost:{{ grafana_port }} (admin / admin)"
+
+- name: "[monitoring] Wait for cAdvisor metrics endpoint"
+  ansible.builtin.uri:
+    url: "http://localhost:{{ cadvisor_port }}/metrics"
+    status_code: 200
+  register: cadvisor_health
+  retries: "{{ health_retries }}"
+  delay: "{{ health_delay }}"
+  until: cadvisor_health.status == 200
+
+- name: "[monitoring] cAdvisor is UP"
+  ansible.builtin.debug:
+    msg: "✅ cAdvisor healthy at http://localhost:{{ cadvisor_port }}"
+
+- name: "[monitoring] Wait for frontend (Nginx API gateway)"
+  ansible.builtin.uri:
+    url: "http://localhost:{{ frontend_port }}"
+    status_code: 200
+  register: frontend_health
+  retries: "{{ health_retries }}"
+  delay: "{{ health_delay }}"
+  until: frontend_health.status == 200
+
+- name: "[monitoring] Frontend is UP"
+  ansible.builtin.debug:
+    msg: "✅ Frontend reachable at http://localhost:{{ frontend_port }}"
+
+# ---------- Check all Prometheus scrape targets are UP -----------------------
+
+- name: "[monitoring] Query Prometheus for service UP status"
+  ansible.builtin.uri:
+    url: "http://localhost:{{ prometheus_port }}/api/v1/query?query=up"
+    return_content: true
+  register: prom_up_query
+  changed_when: false
+  retries: "{{ health_retries }}"
+  delay: "{{ health_delay }}"
+  until:
+    - prom_up_query.json.status == "success"
+    - prom_up_query.json.data.result | length > 0
+
+- name: "[monitoring] Print Prometheus UP metrics"
+  ansible.builtin.debug:
+    msg: "{{ prom_up_query.json.data.result | map(attribute='metric') | list }}"
+
+- name: "[monitoring] Fail if any Prometheus scrape target is DOWN"
+  ansible.builtin.fail:
+    msg: "Prometheus target is DOWN: {{ item.metric.job | default(item.metric.instance) }}"
+  loop: "{{ prom_up_query.json.data.result }}"
+  when: item.value[1] != "1"
+
+# ---------- Summary ----------------------------------------------------------
+
+- name: "[monitoring] Print access summary"
+  ansible.builtin.debug:
+    msg:
+      - "============================================================"
+      - "  SRE Stack — Access URLs"
+      - "============================================================"
+      - "  Frontend (UI)   : http://localhost:{{ frontend_port }}"
+      - "  Auth API docs   : http://localhost:{{ frontend_port }}/api/auth/docs"
+      - "  Product docs    : http://localhost:{{ frontend_port }}/api/products/docs"
+      - "  Order docs      : http://localhost:{{ frontend_port }}/api/orders/docs"
+      - "  Notification docs: http://localhost:{{ frontend_port }}/api/notifications/docs"
+      - "  Prometheus      : http://localhost:{{ prometheus_port }}"
+      - "  Grafana         : http://localhost:{{ grafana_port }}  (admin / admin)"
+      - "  cAdvisor        : http://localhost:{{ cadvisor_port }}"
+      - "============================================================"

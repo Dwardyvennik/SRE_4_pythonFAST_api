@@ -40,6 +40,11 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: PRODUCT_SERVICE_URL
+            - name: NOTIFICATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: NOTIFICATION_SERVICE_URL
           readinessProbe:
             httpGet:
               path: /orders/health

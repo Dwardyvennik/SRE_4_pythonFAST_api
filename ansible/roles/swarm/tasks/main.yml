@@ -1,0 +1,72 @@
+---
+# ==============================================================================
+# Role: swarm
+# Initialises a single-node Docker Swarm and deploys the stack using
+# docker-stack.yml (the Swarm-compatible compose file).
+# ==============================================================================
+
+- name: "[swarm] Check if Swarm is already active"
+  ansible.builtin.command: docker info --format '{{ "{{" }}.Swarm.LocalNodeState{{ "}}" }}'
+  register: swarm_state
+  changed_when: false
+
+- name: "[swarm] Initialise Docker Swarm (single-node manager)"
+  ansible.builtin.command: docker swarm init --advertise-addr {{ ansible_default_ipv4.address }}
+  when: swarm_state.stdout != "active"
+  register: swarm_init
+  changed_when: swarm_init.rc == 0
+
+- name: "[swarm] Set compose project path"
+  ansible.builtin.set_fact:
+    compose_project_path: "{{ compose_project_path | default(app_dir) }}"
+
+- name: "[swarm] Check for stack file at repository root"
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/{{ swarm_compose_file }}"
+  register: stack_root
+
+- name: "[swarm] Check for stack file in project subdirectory"
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/SRE_4_pythonFAST_api/{{ swarm_compose_file }}"
+  register: stack_nested
+
+- name: "[swarm] Set stack project path"
+  ansible.builtin.set_fact:
+    compose_project_path: >-
+      {{ app_dir if stack_root.stat.exists else app_dir + '/SRE_4_pythonFAST_api' }}
+
+- name: "[swarm] Fail if stack file cannot be found"
+  ansible.builtin.fail:
+    msg: "Could not find {{ swarm_compose_file }} at {{ app_dir }} or {{ app_dir }}/SRE_4_pythonFAST_api"
+  when:
+    - not stack_root.stat.exists
+    - not stack_nested.stat.exists
+
+- name: "[swarm] Deploy stack with docker stack deploy"
+  ansible.builtin.command:
+    cmd: "docker stack deploy --resolve-image never -c {{ swarm_compose_file }} {{ swarm_stack_name }}"
+    chdir: "{{ compose_project_path }}"
+  register: swarm_deploy
+  changed_when: swarm_deploy.rc == 0
+
+- name: "[swarm] Wait for services to stabilise"
+  ansible.builtin.pause:
+    seconds: 20
+
+- name: "[swarm] List Swarm services"
+  ansible.builtin.command: "docker stack services {{ swarm_stack_name }}"
+  register: swarm_services
+  changed_when: false
+
+- name: "[swarm] Print Swarm service list"
+  ansible.builtin.debug:
+    var: swarm_services.stdout_lines
+
+- name: "[swarm] Show service replica status"
+  ansible.builtin.command: "docker service ls --filter label=com.docker.stack.namespace={{ swarm_stack_name }}"
+  register: service_ls
+  changed_when: false
+
+- name: "[swarm] Print replica status"
+  ansible.builtin.debug:
+    var: service_ls.stdout_lines

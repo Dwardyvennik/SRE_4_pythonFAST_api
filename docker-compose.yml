@@ -21,6 +21,7 @@ services:
 
   auth-service:
     build: ./auth-service
+    image: fastapi-microservices-auth-service:latest
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
@@ -43,6 +44,7 @@ services:
 
   user-service:
     build: ./user-service
+    image: fastapi-microservices-user-service:latest
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
@@ -66,6 +68,7 @@ services:
 
   product-service:
     build: ./product-service
+    image: fastapi-microservices-product-service:latest
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
@@ -85,16 +88,20 @@ services:
 
   order-service:
     build: ./order-service
+    image: fastapi-microservices-order-service:latest
     restart: unless-stopped
     environment:
       DATABASE_URL: ${ORDER_DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL:-http://product-service:8000}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:8000}
     depends_on:
       postgres:
         condition: service_healthy
       product-service:
+        condition: service_healthy
+      notification-service:
         condition: service_healthy
     expose:
       - "8000"
@@ -107,8 +114,31 @@ services:
     networks:
       - microservices-net
 
+  notification-service:
+    build: ./notification-service
+    image: fastapi-microservices-notification-service:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/notifications/health', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - microservices-net
+
   chat-service:
     build: ./chat-service
+    image: fastapi-microservices-chat-service:latest
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db}
@@ -143,6 +173,7 @@ services:
       - user-service
       - product-service
       - order-service
+      - notification-service
       - chat-service
     networks:
       - microservices-net
@@ -162,6 +193,7 @@ services:
       - user-service
       - product-service
       - order-service
+      - notification-service
       - chat-service
       - cadvisor
     networks:

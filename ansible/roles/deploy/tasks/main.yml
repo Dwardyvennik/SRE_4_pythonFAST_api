@@ -1,0 +1,73 @@
+---
+# ==============================================================================
+# Role: deploy
+# Clones the project repo, validates Compose, and builds the images that
+# Docker Swarm deploys as the live runtime.
+# ==============================================================================
+
+- name: "[deploy] Create application directory"
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0755"
+
+- name: "[deploy] Clone or update project repository"
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ app_dir }}"
+    version: "{{ repo_branch }}"
+    update: true
+    force: true
+  become_user: "{{ deploy_user }}"
+
+- name: "[deploy] Check for compose file at repository root"
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/{{ compose_file }}"
+  register: compose_root
+
+- name: "[deploy] Check for compose file in project subdirectory"
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/SRE_4_pythonFAST_api/{{ compose_file }}"
+  register: compose_nested
+
+- name: "[deploy] Set compose project path"
+  ansible.builtin.set_fact:
+    compose_project_path: >-
+      {{ app_dir if compose_root.stat.exists else app_dir + '/SRE_4_pythonFAST_api' }}
+
+- name: "[deploy] Fail if compose project path cannot be found"
+  ansible.builtin.fail:
+    msg: "Could not find {{ compose_file }} at {{ app_dir }} or {{ app_dir }}/SRE_4_pythonFAST_api"
+  when:
+    - not compose_root.stat.exists
+    - not compose_nested.stat.exists
+
+- name: "[deploy] Copy .env.example to .env if .env is missing"
+  ansible.builtin.copy:
+    src: "{{ compose_project_path }}/.env.example"
+    dest: "{{ compose_project_path }}/.env"
+    remote_src: true
+    force: false   # don't overwrite if already exists
+
+- name: "[deploy] Validate Docker Compose configuration"
+  ansible.builtin.command:
+    cmd: docker compose config
+    chdir: "{{ compose_project_path }}"
+  register: compose_config
+  changed_when: false
+
+- name: "[deploy] Build Docker images with Compose"
+  ansible.builtin.command:
+    cmd: docker compose build
+    chdir: "{{ compose_project_path }}"
+  register: compose_build
+  changed_when: "'Successfully built' in compose_build.stdout or compose_build.rc == 0"
+
+- name: "[deploy] Ensure Compose stack is not occupying Swarm ports"
+  ansible.builtin.command:
+    cmd: docker compose down --remove-orphans
+    chdir: "{{ compose_project_path }}"
+  register: compose_down
+  changed_when: "'Removed' in compose_down.stdout or 'Network' in compose_down.stdout"

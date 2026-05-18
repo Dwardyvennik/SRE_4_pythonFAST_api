@@ -1,0 +1,93 @@
+---
+# ==============================================================================
+# Role: docker
+# Installs Docker Engine, Compose plugin, and kubectl on Ubuntu/Debian hosts.
+# On localhost it skips steps that require SSH/sudo where not needed.
+# ==============================================================================
+
+- name: "[docker] Update apt cache"
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: "[docker] Install system dependencies"
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - git
+      - python3-pip
+      - apt-transport-https
+      - software-properties-common
+    state: present
+  when: ansible_os_family == "Debian"
+
+# ---------- Docker Engine -----------------------------------------------------
+
+- name: "[docker] Add Docker GPG key"
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: "[docker] Add Docker apt repository"
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+    filename: docker
+  when: ansible_os_family == "Debian"
+
+- name: "[docker] Install Docker Engine and Compose plugin"
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: "[docker] Ensure Docker service is started and enabled"
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: "[docker] Add ubuntu user to docker group"
+  ansible.builtin.user:
+    name: "{{ deploy_user }}"
+    groups: docker
+    append: true
+
+- name: "[docker] Verify Docker version"
+  ansible.builtin.command: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: "[docker] Print Docker version"
+  ansible.builtin.debug:
+    msg: "{{ docker_version.stdout }}"
+
+# ---------- kubectl -----------------------------------------------------------
+
+- name: "[docker] Install kubectl client"
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: "[docker] Verify kubectl version"
+  ansible.builtin.command: kubectl version --client
+  register: kubectl_version
+  changed_when: false
+  ignore_errors: true
+
+- name: "[docker] Print kubectl version"
+  ansible.builtin.debug:
+    msg: "{{ kubectl_version.stdout | default('kubectl not available') }}"

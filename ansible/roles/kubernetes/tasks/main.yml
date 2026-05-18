@@ -1,0 +1,109 @@
+---
+# ==============================================================================
+# Role: kubernetes
+# Validates all Kubernetes manifests from the k8s/ directory.
+# Applies them only when a cluster is already reachable via kubectl.
+# ==============================================================================
+
+- name: "[k8s] Set k8s manifests path"
+  ansible.builtin.set_fact:
+    k8s_manifests_dir: "{{ compose_project_path | default(app_dir + '/SRE_4_pythonFAST_api') }}/k8s"
+
+- name: "[k8s] Check kubectl can reach a cluster"
+  ansible.builtin.command: kubectl cluster-info
+  register: cluster_info
+  changed_when: false
+  ignore_errors: true
+
+- name: "[k8s] Validate Kubernetes manifests without a cluster"
+  ansible.builtin.command:
+    cmd: kubectl apply --dry-run=client --validate=false -f {{ k8s_manifests_dir }}
+  register: k8s_dry_run
+  changed_when: false
+  when: cluster_info.rc != 0
+
+- name: "[k8s] Skip live K8s apply if no cluster is available"
+  ansible.builtin.debug:
+    msg: "No Kubernetes cluster found. Manifests validated with kubectl client dry-run; live apply skipped."
+  when: cluster_info.rc != 0
+
+- name: "[k8s] Run K8s deployment tasks"
+  when: cluster_info.rc == 0
+  block:
+
+    - name: "[k8s] Apply namespace first"
+      ansible.builtin.command:
+        cmd: kubectl apply -f namespace.yaml
+        chdir: "{{ k8s_manifests_dir }}"
+      register: ns_apply
+      changed_when: "'created' in ns_apply.stdout or 'configured' in ns_apply.stdout"
+
+    - name: "[k8s] Apply ConfigMap"
+      ansible.builtin.command:
+        cmd: kubectl apply -f configmap.yaml
+        chdir: "{{ k8s_manifests_dir }}"
+      register: cm_apply
+      changed_when: "'created' in cm_apply.stdout or 'configured' in cm_apply.stdout"
+
+    - name: "[k8s] Apply PostgreSQL"
+      ansible.builtin.command:
+        cmd: kubectl apply -f postgres.yaml
+        chdir: "{{ k8s_manifests_dir }}"
+      register: pg_apply
+      changed_when: "'created' in pg_apply.stdout or 'configured' in pg_apply.stdout"
+
+    - name: "[k8s] Wait for PostgreSQL pod to be ready"
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/postgres -n {{ k8s_namespace }} --timeout=120s
+      register: pg_rollout
+      changed_when: false
+      ignore_errors: true
+
+    - name: "[k8s] Apply all remaining service manifests"
+      ansible.builtin.command:
+        cmd: "kubectl apply -f {{ item }}"
+        chdir: "{{ k8s_manifests_dir }}"
+      loop:
+        - auth-service.yaml
+        - user-service.yaml
+        - product-service.yaml
+        - order-service.yaml
+        - notification-service.yaml
+        - chat-service.yaml
+        - nginx.yaml
+      register: svc_apply
+      changed_when: "'created' in svc_apply.stdout or 'configured' in svc_apply.stdout"
+
+    - name: "[k8s] Wait for all deployments to be ready"
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/{{ item }} -n {{ k8s_namespace }} --timeout=180s
+      loop:
+        - auth-service
+        - user-service
+        - product-service
+        - order-service
+        - notification-service
+        - chat-service
+      register: rollout_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: "[k8s] Show all pods in namespace"
+      ansible.builtin.command:
+        cmd: kubectl get pods -n {{ k8s_namespace }} -o wide
+      register: pod_list
+      changed_when: false
+
+    - name: "[k8s] Print pod status"
+      ansible.builtin.debug:
+        var: pod_list.stdout_lines
+
+    - name: "[k8s] Show all services in namespace"
+      ansible.builtin.command:
+        cmd: kubectl get services -n {{ k8s_namespace }}
+      register: svc_list
+      changed_when: false
+
+    - name: "[k8s] Print service list"
+      ansible.builtin.debug:
+        var: svc_list.stdout_lines

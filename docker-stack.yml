@@ -51,7 +51,7 @@ services:
     networks:
       - microservices-net
     deploy:
-      replicas: 2
+      replicas: 1
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -107,7 +107,7 @@ services:
     networks:
       - microservices-net
     deploy:
-      replicas: 2
+      replicas: 1
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -138,7 +138,7 @@ services:
     networks:
       - microservices-net
     deploy:
-      replicas: 3          # order-service gets most replicas — highest load
+      replicas: 1
       restart_policy:
         condition: on-failure
         delay: 5s

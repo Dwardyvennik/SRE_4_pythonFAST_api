@@ -1,3 +1,122 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: microservices
+data:
+  default.conf: |
+    server {
+        listen 80;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location = /api/auth {
+            proxy_pass http://auth-service:8000/auth;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /api/auth/ {
+            rewrite ^/api/auth/(.*)$ /auth/$1 break;
+            proxy_pass http://auth-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /auth/ {
+            proxy_pass http://auth-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location = /api/users {
+            proxy_pass http://user-service:8000/users;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /api/users/ {
+            rewrite ^/api/users/(.*)$ /users/$1 break;
+            proxy_pass http://user-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /users/ {
+            proxy_pass http://user-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location = /api/products {
+            proxy_pass http://product-service:8000/products;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /api/products/ {
+            rewrite ^/api/products/(.*)$ /products/$1 break;
+            proxy_pass http://product-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /products/ {
+            proxy_pass http://product-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location = /api/orders {
+            proxy_pass http://order-service:8000/orders;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /api/orders/ {
+            rewrite ^/api/orders/(.*)$ /orders/$1 break;
+            proxy_pass http://order-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /orders/ {
+            proxy_pass http://order-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location = /api/notifications {
+            proxy_pass http://notification-service:8000/notifications;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /api/notifications/ {
+            rewrite ^/api/notifications/(.*)$ /notifications/$1 break;
+            proxy_pass http://notification-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /notifications/ {
+            proxy_pass http://notification-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location = /api/chat {
+            proxy_pass http://chat-service:8000/chat;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /api/chat/ {
+            rewrite ^/api/chat/(.*)$ /chat/$1 break;
+            proxy_pass http://chat-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+
+        location /chat/ {
+            proxy_pass http://chat-service:8000;
+            include /etc/nginx/conf.d/proxy_headers.conf;
+        }
+    }
+  proxy_headers.conf: |
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,6 +137,14 @@ spec:
           image: nginx:1.27-alpine
           ports:
             - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
 ---
 apiVersion: v1
 kind: Service
