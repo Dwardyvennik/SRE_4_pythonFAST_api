@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: microservices
+data:
+  POSTGRES_DB: microservices_db
+  POSTGRES_USER: postgres
+  JWT_ALGORITHM: HS256
+  TOKEN_EXPIRE_MINUTES: "120"
+  PRODUCT_SERVICE_URL: http://product-service:8000
+  NOTIFICATION_SERVICE_URL: http://notification-service:8000
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: microservices
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: postgres
+  DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/microservices_db
+  JWT_SECRET: change-me-in-production
