@@ -18,6 +18,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:postgre
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://product-service:8000")
+NOTIFICATION_SERVICE_URL = os.getenv("NOTIFICATION_SERVICE_URL", "http://notification-service:8000")
 SERVICE_NAME = "order-service"
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
@@ -111,6 +112,18 @@ def fetch_product(product_id: int) -> dict:
         raise HTTPException(status_code=502, detail="Product service error")
     return response.json()
 
+# notify_user is fire-and-forget, we don't care about the result and it must not affect order creation, so we ignore any exceptions
+def notify_user(user_id: int, message: str) -> None:
+    """Send notification to notification-service. Fails silently — order is not affected."""
+    try:
+        requests.post(
+            f"{NOTIFICATION_SERVICE_URL}/notifications",
+            json={"user_id": user_id, "message": message},
+            timeout=3,
+        )
+    except requests.RequestException:
+        pass  # notification failure must never break order creation
+
 
 def order_response(order: Order) -> OrderResponse:
     return OrderResponse(
@@ -194,6 +207,7 @@ def create_order(payload: OrderPayload, user_id: int = Depends(current_user_id),
     order.total = total
     db.commit()
     db.refresh(order)
+    notify_user(user_id, f"Order #{order.id} placed successfully. Total: {order.total}")
     return order_response(order)
 
 
