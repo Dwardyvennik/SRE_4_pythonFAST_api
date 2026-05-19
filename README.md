@@ -103,7 +103,7 @@ http_request_duration_seconds_bucket{method="GET",endpoint="/products",status="2
 http_requests_in_progress{method="GET",endpoint="/products",service_name="product-service"}
 ```
 
-Prometheus scrape targets are defined in `prometheus/prometheus.yml`:
+Prometheus scrape targets are defined in `monitoring/prometheus/prometheus.yml`:
 
 ```yaml
 scrape_configs:
